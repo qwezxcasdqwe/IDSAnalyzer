@@ -3,31 +3,69 @@ import java.util.*;
 
 public class CsvReader {
 
-    public static List<Session> readSessions(String filePath) throws IOException {
+    public static List<Session> readSessions(String filePath) throws Exception {
         List<Session> sessions = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line = br.readLine(); // header
+        BufferedReader br = new BufferedReader(new FileReader(filePath));
+        String headerLine = br.readLine();
 
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
+        if (headerLine == null) return sessions;
 
-                Session session = new Session(
-                        parts[0],
-                        parts[1],
-                        Integer.parseInt(parts[2]),
-                        Integer.parseInt(parts[3]),
-                        parts[4],
-                        Integer.parseInt(parts[5]),
-                        Integer.parseInt(parts[6]),
-                        Integer.parseInt(parts[7]),
-                        Integer.parseInt(parts[8]),
-                        Double.parseDouble(parts[9])
-                );
+        String[] headers = headerLine.split(",");
 
-                sessions.add(session);
-            }
+        Map<String, Integer> index = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            index.put(headers[i].trim(), i);
         }
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] row = line.split(",", -1);
+
+            String srcIP = row[index.get("Src IP")];
+            String dstIP = row[index.get("Dst IP")];
+
+            int srcPort = parseInt(row[index.get("Src Port")]);
+            int dstPort = parseInt(row[index.get("Dst Port")]);
+
+            String protocol = row[index.get("Protocols")];
+
+            int packets = parseInt(row[index.get("Packets")]);
+
+            int synCount = parseInt(row[index.get("TCP Flag SYN")]);
+            int finCount = 0;
+            int rstCount = 0;
+
+            double duration = calcDuration(
+                    row[index.get("Start Time")],
+                    row[index.get("Stop Time")]
+            );
+
+            Session s = new Session(
+                    srcIP, dstIP, srcPort, dstPort,
+                    protocol, packets, synCount,
+                    finCount, rstCount, duration
+            );
+
+            sessions.add(s);
+        }
+
+        br.close();
         return sessions;
+    }
+
+    private static int parseInt(String s) {
+        if (s == null || s.isEmpty()) return 0;
+        return Integer.parseInt(s);
+    }
+
+    private static double calcDuration(String start, String stop) {
+        try {
+            long s = Long.parseLong(start);
+            long e = Long.parseLong(stop);
+            return (e - s) / 1000.0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }
