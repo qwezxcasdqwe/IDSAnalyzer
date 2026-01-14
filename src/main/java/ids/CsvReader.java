@@ -1,51 +1,41 @@
 import java.io.*;
 import java.util.*;
 
+
+import java.io.*;
+import java.util.*;
+
 public class CsvReader {
 
-    public static List<Session> readSessions(String filePath) throws Exception {
+    public static List<Session> read(File file) throws Exception {
         List<Session> sessions = new ArrayList<>();
-
-        BufferedReader br = new BufferedReader(new FileReader(filePath));
-        String headerLine = br.readLine();
-
-        if (headerLine == null) return sessions;
-
-        String[] headers = headerLine.split(",");
-
-        Map<String, Integer> index = new HashMap<>();
-        for (int i = 0; i < headers.length; i++) {
-            index.put(headers[i].trim(), i);
-        }
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        String header = br.readLine(); // пропускаем заголовок
 
         String line;
         while ((line = br.readLine()) != null) {
-            String[] row = line.split(",", -1);
+            String[] c = line.split(",", -1); // -1 чтобы сохранять пустые поля
 
-            String srcIP = row[index.get("Src IP")];
-            String dstIP = row[index.get("Dst IP")];
+            if (c.length < 24) continue; // пропускаем некорректные строки
 
-            int srcPort = parseInt(row[index.get("Src Port")]);
-            int dstPort = parseInt(row[index.get("Dst Port")]);
+            Session s = new Session();
 
-            String protocol = row[index.get("Protocols")];
+            long startTime = parseLongSafe(c[0]);
+            long stopTime = parseLongSafe(c[1]);
+            s.duration = (stopTime - startTime) / 1000.0;
 
-            int packets = parseInt(row[index.get("Packets")]);
+            s.srcIp = c[2];
+            s.dstIp = c[5];
+            s.srcPort = parseIntSafe(c[4]);
+            s.dstPort = parseIntSafe(c[7]);
 
-            int synCount = parseInt(row[index.get("TCP Flag SYN")]);
-            int finCount = 0;
-            int rstCount = 0;
+            s.packets = parseIntSafe(c[8]);
+            s.bytes = parseLongSafe(c[10]);
 
-            double duration = calcDuration(
-                    row[index.get("Start Time")],
-                    row[index.get("Stop Time")]
-            );
+            s.protocol = c[12];
 
-            Session s = new Session(
-                    srcIP, dstIP, srcPort, dstPort,
-                    protocol, packets, synCount,
-                    finCount, rstCount, duration
-            );
+            s.synCount = parseIntSafe(c[22]);
+            s.synAckCount = parseIntSafe(c[23]);
 
             sessions.add(s);
         }
@@ -54,18 +44,18 @@ public class CsvReader {
         return sessions;
     }
 
-    private static int parseInt(String s) {
+    private static int parseIntSafe(String s) {
         if (s == null || s.isEmpty()) return 0;
         return Integer.parseInt(s);
     }
 
-    private static double calcDuration(String start, String stop) {
-        try {
-            long s = Long.parseLong(start);
-            long e = Long.parseLong(stop);
-            return (e - s) / 1000.0;
-        } catch (Exception e) {
-            return 0;
-        }
+    private static long parseLongSafe(String s) {
+        if (s == null || s.isEmpty()) return 0L;
+        return Long.parseLong(s);
+    }
+
+    private static double parseDoubleSafe(String s) {
+        if (s == null || s.isEmpty()) return 0.0;
+        return Double.parseDouble(s);
     }
 }

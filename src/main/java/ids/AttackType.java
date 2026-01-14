@@ -1,5 +1,7 @@
 public enum AttackType {
     NORMAL,
-    DOS_SYN_FLOOD,
-    BRUTE_FORCE
+    PORT_SCAN,
+    DOS,
+    BRUTE_FORCE,
+    SUSPICIOUS
 }
